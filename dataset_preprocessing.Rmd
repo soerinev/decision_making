@@ -1,0 +1,184 @@
+---
+title: "Decision Making preprocessing of datasets"
+author: "Laura Sørine Voldgaard"
+date: "2026-01-09"
+output: html_document
+---
+
+Preprocessing of dataset from Steingroever (2013).
+
+
+**0) Prep**
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+pacman::p_load(tidyverse)
+
+```
+
+```{r}
+getwd()
+```
+
+```{r}
+# load data
+choice <- read.csv("raw_data/choice_100.csv")
+win <- read.csv("raw_data/wi_100.csv")
+loss <- read.csv("raw_data/lo_100.csv")
+index <- read.csv("raw_data/index_100.csv")
+
+```
+
+
+
+**1) Remove subjects not included in analysis**
+
+```{r}
+# remove columns with subjects not included in this analysis
+rows_to_keep <- c(
+  paste0("Subj_", 163:221),
+  paste0("Subj_", 292:316),
+  paste0("Subj_", 317:504)
+)
+
+choice <- choice[rows_to_keep, ]
+loss <- loss[rows_to_keep, ]
+win <- win[rows_to_keep, ]
+```
+
+
+
+**2) Change format of dfs**
+
+```{r}
+library(tidyr)
+library(dplyr)
+pacman::p_load(tibble)
+
+# Convert choice from wide to long format
+choice_long <- choice %>%
+  rownames_to_column("subjID") %>%
+  pivot_longer(
+    cols = starts_with("Choice_"),
+    names_to = "trial",
+    values_to = "deck"
+  ) %>%
+  mutate(
+    trial = as.numeric(gsub("Choice_", "", trial))
+  )
+```
+
+
+```{r}
+# Convert loss from wide to long format
+loss_long <- loss %>%
+  rownames_to_column("subjID") %>%
+  pivot_longer(
+    cols = starts_with("Losses_"),
+    names_to = "trial",
+    values_to = "loss"
+  ) %>%
+  mutate(
+    trial = as.numeric(gsub("Losses_", "", trial))
+  )
+```
+
+```{r}
+# Convert win from wide to long format
+win_long <- win %>%
+  rownames_to_column("subjID") %>%
+  pivot_longer(
+    cols = starts_with("Wins_"),
+    names_to = "trial",
+    values_to = "gain"
+  ) %>%
+  mutate(
+    trial = as.numeric(gsub("Wins_", "", trial))
+  )
+```
+
+
+```{r}
+# Merge all three dataframes
+combined <- choice_long %>%
+  left_join(loss_long, by = c("subjID", "trial")) %>%
+  left_join(win_long, by = c("subjID", "trial"))
+```
+
+
+```{r}
+# change order of columns
+combined <- combined %>%
+  select(trial, deck, gain, loss, subjID)
+```
+
+
+**3) split into the two groups**
+
+```{r}
+# Extract the subject number from subjID (e.g., "Subj_182" -> 182)
+combined2 <- combined %>%
+  mutate(subj_num = as.numeric(gsub("Subj_", "", subjID)))
+
+# Create stationary dataframe (182-221 and 470-504)
+stationary <- combined2 %>%
+  filter((subj_num >= 182 & subj_num <= 221) | 
+         (subj_num >= 470 & subj_num <= 504))
+
+# Create non dataframe (all the rest)
+non <- combined2 %>%
+  filter(!((subj_num >= 182 & subj_num <= 221) | 
+           (subj_num >= 470 & subj_num <= 504)))
+
+# Optional: remove the helper column if you don't need it
+stationary <- stationary %>% select(-subj_num)
+non <- non %>% select(-subj_num)
+```
+
+```{r}
+# Extract the subject number from subjID (e.g., "Subj_182" -> 182)
+combined2 <- combined %>%
+  mutate(subjID = as.numeric(gsub("Subj_", "", subjID)))
+
+# Create stationary dataframe (182-221 and 470-504)
+stationary <- combined2 %>%
+  filter((subjID >= 182 & subjID <= 221) | 
+         (subjID >= 470 & subjID <= 504))
+
+# Create non dataframe (all the rest)
+non <- combined2 %>%
+  filter(!((subjID >= 182 & subjID <= 221) | 
+           (subjID >= 470 & subjID <= 504)))
+```
+
+
+
+**4) save dataframes as csv and txt**
+
+```{r}
+# Create the folders if they don't exist
+dir.create("csv", showWarnings = FALSE)
+dir.create("txt", showWarnings = FALSE)
+
+# Save CSV files in the csv folder
+write.csv(stationary, "csv/stationary.csv", row.names = FALSE)
+write.csv(non, "csv/non.csv", row.names = FALSE)
+
+# Save TXT files in the txt folder
+write.table(stationary, "txt/stationary.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(non, "txt/non.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+```
+
+
+
+**DONE**
+
+
+
+
+
+
+
