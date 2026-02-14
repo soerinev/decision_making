@@ -1,0 +1,564 @@
+---
+title: "Visualizations"
+author: "Laura Sørine Voldgaard"
+date: "2026-02-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+getwd()
+```
+
+
+**Inspect stationary rds data**
+
+```{r}
+# inspect new samples with more chains
+stationary5 <- readRDS("stationary5.rds")
+```
+
+```{r}
+# Convergence diagnostics (Rhat values)
+stationary5$BUGSoutput$summary[, "Rhat"]
+```
+
+```{r}
+# Check MCMC chains
+library(bayesplot)
+
+# Extract MCMC chains
+mcmc_array <- stationary5$BUGSoutput$sims.array
+
+# Trace plots
+mcmc_trace(mcmc_array, pars = c("mu_a_rew", "mu_a_pun", "mu_K", "mu_omega_f", "mu_omega_p"))
+```
+
+```{r}
+
+# Load the saved samples
+samples <- readRDS("stationary5.rds")
+
+# Check the JAGS run parameters
+samples$BUGSoutput$n.chains  # Number of chains
+samples$BUGSoutput$n.iter    # Total iterations
+samples$BUGSoutput$n.burnin  # Burn-in iterations
+samples$BUGSoutput$n.thin    # Thinning interval
+samples$BUGSoutput$n.keep    # Samples kept per chain
+samples$BUGSoutput$n.sims    # Total samples saved
+
+# You can also view the full structure
+#str(samples$BUGSoutput)
+
+# Or see a summary
+#print(samples)
+```
+
+
+
+**Inspect non-stationary rds data**
+
+
+```{r}
+# inspect new samples with more chains
+non5 <- readRDS("non5.rds")
+```
+
+```{r}
+# Convergence diagnostics (Rhat values)
+non5$BUGSoutput$summary[, "Rhat"]
+```
+
+```{r}
+# Check MCMC chains
+library(bayesplot)
+
+# Extract MCMC chains
+mcmc_array <- non5$BUGSoutput$sims.array
+
+# Trace plots
+mcmc_trace(mcmc_array, pars = c("mu_a_rew", "mu_a_pun", "mu_K", "mu_omega_f", "mu_omega_p"))
+```
+
+```{r}
+
+# Load the saved samples
+samples <- readRDS("non5.rds")
+
+# Check the JAGS run parameters
+samples$BUGSoutput$n.chains  # Number of chains
+samples$BUGSoutput$n.iter    # Total iterations
+samples$BUGSoutput$n.burnin  # Burn-in iterations
+samples$BUGSoutput$n.thin    # Thinning interval
+samples$BUGSoutput$n.keep    # Samples kept per chain
+samples$BUGSoutput$n.sims    # Total samples saved
+
+# You can also view the full structure
+#str(samples$BUGSoutput)
+
+# Or see a summary
+#print(samples)
+```
+
+
+
+**Posterior predictive checks**
+
+```{r}
+# STATIONARY
+pp_stationary <- readRDS("posterior_predictive_stationary.rds")
+
+# Look at structure
+str(pp_stationary)
+
+# View first few rows
+head(pp_stationary)
+
+# Summary statistics
+summary(pp_stationary)
+
+# Check what variables you have
+names(pp_stationary)
+
+# Look at specific values
+pp_stationary$avg  # average prediction accuracy
+pp_stationary$std  # standard deviation
+```
+
+
+
+
+```{r}
+# NON-STATIONARY
+pp_non <- readRDS("posterior_predictive_non.rds")
+
+# Look at structure
+str(pp_non)
+
+# View first few rows
+head(pp_non)
+
+# Summary statistics
+summary(pp_non)
+
+# Check what variables you have
+names(pp_non)
+
+# Look at specific values
+pp_non$avg  # average prediction accuracy
+pp_non$std  # standard deviation
+```
+
+
+```{r}
+# FOR REAL FIGURE 2 PLOT
+library(ggplot2)
+library(patchwork)
+
+# Create stationary plot (remove title, will add overall title later)
+p_stat <- ggplot(pp_stationary, aes(x = sub, y = pred_success_adjust * 100)) +
+  geom_col(fill = "darkcyan", width = 0.8) +
+  geom_hline(aes(yintercept = avg * 100), 
+             color = "black", size = .7, linetype = "solid") +
+  geom_hline(aes(yintercept = chance * 100), 
+             color = "black", size = .7, linetype = "dashed") +
+  labs(
+    title = "Stationary",  # Shorter title for panel
+    x = "Participants",
+    y = "Prediction accuracy (percent)"
+  ) +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+  theme_minimal() +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+# Create non-stationary plot
+p_non <- ggplot(pp_non, aes(x = sub, y = pred_success_adjust * 100)) +
+  geom_col(fill = "darkorange3", width = 0.8) +  # Different color like in image
+  geom_hline(aes(yintercept = avg * 100), 
+             color = "black", size = .7, linetype = "solid") +
+  geom_hline(aes(yintercept = chance * 100), 
+             color = "black", size = .7, linetype = "dashed") +
+  labs(
+    title = "Non-Stationary",
+    x = "Participants",
+    y = "Prediction accuracy (percent)"
+  ) +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+  theme_minimal() +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+# Combine side by side
+combined_plot <- p_stat + p_non
+
+# Save
+#ggsave("ppc_combined.png", plot = combined_plot, width = 14, height = 6, dpi = 300)
+
+combined_plot
+```
+
+
+
+
+
+
+
+
+**Convergence diagnostics**
+
+```{r}
+# FOR REAL FIGURE 3 PLOT
+library(bayesplot)
+library(gridExtra)
+library(grid)
+
+# Extract MCMC arrays
+mcmc_stat <- stationary5$BUGSoutput$sims.array
+mcmc_non <- non5$BUGSoutput$sims.array
+
+# Create individual trace plots for stationary (4 cyan colors for 4 chains)
+p_stat_arew <- mcmc_trace(mcmc_stat, pars = "mu_a_rew") +
+  scale_color_manual(values = c("turquoise", "cyan3", "darkturquoise", "darkcyan")) +
+  ylab(expression(mu[a[rew]]))
+
+p_stat_apun <- mcmc_trace(mcmc_stat, pars = "mu_a_pun") +
+  scale_color_manual(values = c("turquoise", "cyan3", "darkturquoise", "darkcyan")) +
+  ylab(expression(mu[a[pun]]))
+
+p_stat_K <- mcmc_trace(mcmc_stat, pars = "mu_K") +
+  scale_color_manual(values = c("turquoise", "cyan3", "darkturquoise", "darkcyan")) +
+  ylab(expression(mu[K]))
+
+p_stat_omegaf <- mcmc_trace(mcmc_stat, pars = "mu_omega_f") +
+  scale_color_manual(values = c("turquoise", "cyan3", "darkturquoise", "darkcyan")) +
+  ylab(expression(mu[omega[F]]))
+
+p_stat_omegap <- mcmc_trace(mcmc_stat, pars = "mu_omega_p") +
+  scale_color_manual(values = c("turquoise", "cyan3", "darkturquoise", "darkcyan")) +
+  ylab(expression(mu[omega[P]]))
+
+# Create individual trace plots for non-stationary (4 orange colors for 4 chains)
+p_non_arew <- mcmc_trace(mcmc_non, pars = "mu_a_rew") +
+  scale_color_manual(values = c("darkorange4", "orange2", "orange3", "darkorange3")) +
+  ylab(expression(mu[a[rew]]))
+
+p_non_apun <- mcmc_trace(mcmc_non, pars = "mu_a_pun") +
+  scale_color_manual(values = c("darkorange4", "orange2", "orange3", "darkorange3")) +
+  ylab(expression(mu[a[pun]]))
+
+p_non_K <- mcmc_trace(mcmc_non, pars = "mu_K") +
+  scale_color_manual(values = c("darkorange4", "orange2", "orange3", "darkorange3")) +
+  ylab(expression(mu[K]))
+
+p_non_omegaf <- mcmc_trace(mcmc_non, pars = "mu_omega_f") +
+  scale_color_manual(values = c("darkorange4", "orange2", "orange3", "darkorange3")) +
+  ylab(expression(mu[omega[F]]))
+
+p_non_omegap <- mcmc_trace(mcmc_non, pars = "mu_omega_p") +
+  scale_color_manual(values = c("darkorange4", "orange2", "orange3", "darkorange3")) +
+  ylab(expression(mu[omega[P]]))
+
+# Create the arrangement
+g <- arrangeGrob(
+  # Column headers
+  textGrob("Stationary", gp = gpar(fontsize = 14, fontface = "bold")),
+  textGrob("Non-Stationary", gp = gpar(fontsize = 14, fontface = "bold")),
+  
+  p_stat_arew, p_non_arew,
+  p_stat_apun, p_non_apun,
+  p_stat_K, p_non_K,
+  p_stat_omegaf, p_non_omegaf,
+  p_stat_omegap, p_non_omegap,
+  ncol = 2,
+  heights = c(0.3, 1, 1, 1, 1, 1)
+)
+
+# View it
+grid.draw(g)
+
+g
+
+# Save it
+ggsave("trace_plots_comparison_prettier?.jpg", g, width = 12, height = 15, dpi = 300)
+```
+
+
+
+**Summary statistics**
+
+
+
+```{r}
+# STATIONARY
+library(dplyr)
+
+# Load the file
+samples_stat <- readRDS("stationary5.rds")
+
+# Extract the posterior samples for each parameter
+mu_a_rew <- samples_stat$BUGSoutput$sims.list$mu_a_rew
+mu_a_pun <- samples_stat$BUGSoutput$sims.list$mu_a_pun
+mu_K <- samples_stat$BUGSoutput$sims.list$mu_K
+mu_omega_f <- samples_stat$BUGSoutput$sims.list$mu_omega_f
+mu_omega_p <- samples_stat$BUGSoutput$sims.list$mu_omega_p
+
+# Get Rhat values from the summary
+rhat_values <- samples_stat$BUGSoutput$summary[c("mu_a_rew", "mu_a_pun", "mu_K", "mu_omega_f", "mu_omega_p"), "Rhat"]
+
+# Create summary table with credible intervals and Rhat
+summary_table <- data.frame(
+  Parameter = c("μA_rew", "μA_pun", "μK", "μω_P", "μω_F"),
+  Mean = c(
+    mean(mu_a_rew),
+    mean(mu_a_pun),
+    mean(mu_K),
+    mean(mu_omega_p),
+    mean(mu_omega_f)
+  ),
+  SD = c(
+    sd(mu_a_rew),
+    sd(mu_a_pun),
+    sd(mu_K),
+    sd(mu_omega_p),
+    sd(mu_omega_f)
+  ),
+  `CI 2.5%` = c(
+    quantile(mu_a_rew, 0.025),
+    quantile(mu_a_pun, 0.025),
+    quantile(mu_K, 0.025),
+    quantile(mu_omega_p, 0.025),
+    quantile(mu_omega_f, 0.025)
+  ),
+  `CI 97.5%` = c(
+    quantile(mu_a_rew, 0.975),
+    quantile(mu_a_pun, 0.975),
+    quantile(mu_K, 0.975),
+    quantile(mu_omega_p, 0.975),
+    quantile(mu_omega_f, 0.975)
+  ),
+  Rhat = rhat_values[c(1, 2, 3, 5, 4)],  # Reorder to match parameter order
+  check.names = FALSE
+)
+
+# Round to 3 decimal places (2 for Rhat)
+summary_table[, 2:5] <- round(summary_table[, 2:5], 3)
+summary_table[, 6] <- round(summary_table[, 6], 2)
+
+# Print the table
+print(summary_table)
+
+# Save as CSV
+write.csv(summary_table, "summary_stats/stationary_summary_stats.csv", row.names = FALSE)
+```
+
+
+
+
+
+```{r}
+# NON-STATIONARY
+library(dplyr)
+
+# Load the file
+samples_stat <- readRDS("non5.rds")
+
+# Extract the posterior samples for each parameter
+mu_a_rew <- samples_stat$BUGSoutput$sims.list$mu_a_rew
+mu_a_pun <- samples_stat$BUGSoutput$sims.list$mu_a_pun
+mu_K <- samples_stat$BUGSoutput$sims.list$mu_K
+mu_omega_f <- samples_stat$BUGSoutput$sims.list$mu_omega_f
+mu_omega_p <- samples_stat$BUGSoutput$sims.list$mu_omega_p
+
+# Get Rhat values from the summary
+rhat_values <- samples_stat$BUGSoutput$summary[c("mu_a_rew", "mu_a_pun", "mu_K", "mu_omega_f", "mu_omega_p"), "Rhat"]
+
+# Create summary table with credible intervals and Rhat
+summary_table <- data.frame(
+  Parameter = c("μA_rew", "μA_pun", "μK", "μω_P", "μω_F"),
+  Mean = c(
+    mean(mu_a_rew),
+    mean(mu_a_pun),
+    mean(mu_K),
+    mean(mu_omega_p),
+    mean(mu_omega_f)
+  ),
+  SD = c(
+    sd(mu_a_rew),
+    sd(mu_a_pun),
+    sd(mu_K),
+    sd(mu_omega_p),
+    sd(mu_omega_f)
+  ),
+  `CI 2.5%` = c(
+    quantile(mu_a_rew, 0.025),
+    quantile(mu_a_pun, 0.025),
+    quantile(mu_K, 0.025),
+    quantile(mu_omega_p, 0.025),
+    quantile(mu_omega_f, 0.025)
+  ),
+  `CI 97.5%` = c(
+    quantile(mu_a_rew, 0.975),
+    quantile(mu_a_pun, 0.975),
+    quantile(mu_K, 0.975),
+    quantile(mu_omega_p, 0.975),
+    quantile(mu_omega_f, 0.975)
+  ),
+  Rhat = rhat_values[c(1, 2, 3, 5, 4)],  # Reorder to match parameter order
+  check.names = FALSE
+)
+
+# Round to 3 decimal places (2 for Rhat)
+summary_table[, 2:5] <- round(summary_table[, 2:5], 3)
+summary_table[, 6] <- round(summary_table[, 6], 2)
+
+# Print the table
+print(summary_table)
+
+# Save as CSV
+write.csv(summary_table, "summary_stats/non_summary_stats.csv", row.names = FALSE)
+```
+
+
+
+
+
+
+**Plot posteriors**
+
+
+```{r}
+# FOR REAL FIGURE 4 PLOT
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(HDInterval)
+
+# Load both
+samples_stat <- readRDS("stationary5.rds")
+samples_non <- readRDS("non5.rds")
+
+# Extract and combine
+stat_data <- data.frame(
+  mu_a_rew = samples_stat$BUGSoutput$sims.list$mu_a_rew,
+  mu_a_pun = samples_stat$BUGSoutput$sims.list$mu_a_pun,
+  mu_K = samples_stat$BUGSoutput$sims.list$mu_K,
+  mu_omega_f = samples_stat$BUGSoutput$sims.list$mu_omega_f,
+  mu_omega_p = samples_stat$BUGSoutput$sims.list$mu_omega_p,
+  group = "Stationary"
+)
+
+non_data <- data.frame(
+  mu_a_rew = samples_non$BUGSoutput$sims.list$mu_a_rew,
+  mu_a_pun = samples_non$BUGSoutput$sims.list$mu_a_pun,
+  mu_K = samples_non$BUGSoutput$sims.list$mu_K,
+  mu_omega_f = samples_non$BUGSoutput$sims.list$mu_omega_f,
+  mu_omega_p = samples_non$BUGSoutput$sims.list$mu_omega_p,
+  group = "Non-stationary"
+)
+
+combined <- rbind(stat_data, non_data)
+
+# Convert to long format
+combined_long <- combined %>%
+  pivot_longer(cols = -group, names_to = "parameter", values_to = "value")
+
+# Calculate density and HDI for each group/parameter
+density_data <- combined_long %>%
+  group_by(parameter, group) %>%
+  summarise(
+    lower = quantile(value, 0.025),
+upper = quantile(value, 0.975),
+    dens = list(density(value, n = 512)),
+    .groups = "drop"
+  ) %>%
+  rowwise() %>%
+  mutate(
+    x = list(dens$x),
+    y = list(dens$y)
+  ) %>%
+  select(-dens) %>%
+  unnest(cols = c(x, y)) %>%
+  mutate(in_hdi = x >= lower & x <= upper)
+
+# Reorder the factor levels
+density_data <- density_data %>%
+  mutate(group = factor(group, levels = c("Non-stationary", "Stationary")))
+
+# Create a labeller for mathematical notation
+param_labels <- c(
+  "mu_a_rew" = "mu[a[rew]]",
+  "mu_a_pun" = "mu[a[pun]]",
+  "mu_K" = "mu[K]",
+  "mu_omega_f" = "mu[omega[F]]",
+  "mu_omega_p" = "mu[omega[P]]"
+)
+
+p <- ggplot(density_data) +
+  geom_ribbon(data = density_data %>% filter(in_hdi), 
+              aes(x = x, ymin = 0, ymax = y, fill = group), 
+              alpha = 0.5) +
+  geom_line(aes(x = x, y = y, color = group), 
+            linewidth = 1.2) +
+  facet_wrap(~parameter, scales = "free", ncol = 2,
+             labeller = labeller(parameter = as_labeller(param_labels, label_parsed))) +
+  scale_color_manual(
+    name = NULL,
+    values = c("Non-stationary" = "darkorange3", "Stationary" = "darkcyan"),
+    labels = c("Non-stationary" = "Non-stationary", "Stationary" = "Stationary")
+  ) +
+  scale_fill_manual(
+    name = NULL,
+    values = c("Non-stationary" = "darkorange3", "Stationary" = "darkcyan"),
+    labels = c("Non-stationary" = "CI (95%)", "Stationary" = "CI (95%)")
+  ) +
+  theme_minimal() +
+  labs(
+    x = "Parameter Value", 
+    y = "Density"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    legend.position = c(0.95, 0.05),
+    legend.justification = c(1, 0),
+    legend.margin = margin(8, 8, 8, 8),
+    legend.text = element_text(size = 11),
+    legend.key.height = unit(0.6, "cm"),
+    legend.key.width = unit(1, "cm"),
+    strip.text = element_text(size = 12)  # Adjust facet label size if needed
+  ) +
+  guides(
+    color = guide_legend(order = 1, override.aes = list(linewidth = 3)),
+    fill = guide_legend(order = 2)
+  )
+
+p
+#ggsave("posterior_distributions_CI_pretty.jpg", p, width = 12, height = 10, dpi = 300)
+
+
+```
+
+
+**Done**
+
+
+
+
+
+
+
+
+
